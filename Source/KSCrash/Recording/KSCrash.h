@@ -144,6 +144,10 @@ typedef enum
  */
 @property(nonatomic,readwrite,retain) NSArray* doNotIntrospectClasses;
 
+@property(nonatomic,readonly,retain) NSString* crashReportPath;
+@property(nonatomic,readonly,retain) NSString* recrashReportPath;
+@property(nonatomic,readonly,retain) NSString* stateFilePath;
+
 
 /** Get the singleton instance of the crash reporter.
  */
@@ -189,7 +193,7 @@ typedef enum
  *
  * @param terminateProgram If true, do not return from this function call. Terminate the program instead.
  */
-- (void) reportUserException:(NSString*) name
+- (NSString*) reportUserException:(NSString*) name
                       reason:(NSString*) reason
                   lineOfCode:(NSString*) lineOfCode
                   stackTrace:(NSArray*) stackTrace

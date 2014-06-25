@@ -38,8 +38,6 @@
 
 @interface KSCrashReportStore (Tests)
 
-- (NSString*) reportIDFromFilename:(NSString*) filename;
-
 @end
 
 

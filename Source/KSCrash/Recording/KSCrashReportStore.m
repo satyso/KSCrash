@@ -368,17 +368,17 @@
     {
         return nil;
     }
-
+    NSString* tmpfileName = [filename lastPathComponent];
     NSString* prefix = [NSString stringWithFormat:@"%@" kCrashReportSuffix,
                         self.bundleName];
     NSString* suffix = @".json";
-    if([filename rangeOfString:prefix].location == 0 &&
-       [filename rangeOfString:suffix].location != NSNotFound)
+    if([tmpfileName rangeOfString:prefix].location == 0 &&
+       [tmpfileName rangeOfString:suffix].location != NSNotFound)
     {
         NSUInteger prefixLength = [prefix length];
         NSUInteger suffixLength = [suffix length];
-        NSRange range = NSMakeRange(prefixLength, [filename length] - prefixLength - suffixLength);
-        return [filename substringWithRange:range];
+        NSRange range = NSMakeRange(prefixLength, [tmpfileName length] - prefixLength - suffixLength);
+        return [tmpfileName substringWithRange:range];
     }
     return nil;
 }

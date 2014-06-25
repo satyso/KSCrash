@@ -99,7 +99,7 @@
 #define kMinStringLength 4
 
 /** Leave lots of room for C++ demangling */
-#define DEMANGLE_BUFFER_LENGTH 2000
+#define DEMANGLE_BUFFER_LENGTH 200
 
 
 // ============================================================================
@@ -1109,13 +1109,9 @@ void kscrw_i_writeBacktraceEntry(const KSCrashReportWriter* const writer,
                                  const Dl_info* const info)
 {
     char demangleBuff[DEMANGLE_BUFFER_LENGTH];
-    writer->beginObject(writer, key);
+    char str[DEMANGLE_BUFFER_LENGTH];
+//    writer->beginObject(writer, key);
     {
-        if(info->dli_fname != NULL)
-        {
-            writer->addStringElement(writer, KSCrashField_ObjectName, ksfu_lastPathEntry(info->dli_fname));
-        }
-        writer->addUIntegerElement(writer, KSCrashField_ObjectAddr, (uintptr_t)info->dli_fbase);
         if(info->dli_sname != NULL)
         {
             const char* sname = info->dli_sname;
@@ -1123,12 +1119,36 @@ void kscrw_i_writeBacktraceEntry(const KSCrashReportWriter* const writer,
             {
                 sname = demangleBuff;
             }
-            writer->addStringElement(writer, KSCrashField_SymbolName, sname);
+            strcpy(str, ksfu_lastPathEntry(info->dli_fname));
+            strcat(str, "   ");
+            strcat(str, sname);
+            
+            writer->addStringElement(writer, "result", str);
+//            writer->addStringElement(writer, KSCrashField_SymbolName, sname);
         }
-        writer->addUIntegerElement(writer, KSCrashField_SymbolAddr, (uintptr_t)info->dli_saddr);
-        writer->addUIntegerElement(writer, KSCrashField_InstructionAddr, address);
     }
-    writer->endContainer(writer);
+//    writer->endContainer(writer);
+    
+//    writer->beginObject(writer, key);
+//    {
+//        if(info->dli_fname != NULL)
+//        {
+//            writer->addStringElement(writer, KSCrashField_ObjectName, ksfu_lastPathEntry(info->dli_fname));
+//        }
+//        writer->addUIntegerElement(writer, KSCrashField_ObjectAddr, (uintptr_t)info->dli_fbase);
+//        if(info->dli_sname != NULL)
+//        {
+//            const char* sname = info->dli_sname;
+//            if(safe_demangle(sname, demangleBuff, sizeof(demangleBuff)) == DEMANGLE_STATUS_SUCCESS)
+//            {
+//                sname = demangleBuff;
+//            }
+//            writer->addStringElement(writer, KSCrashField_SymbolName, sname);
+//        }
+//        writer->addUIntegerElement(writer, KSCrashField_SymbolAddr, (uintptr_t)info->dli_saddr);
+//        writer->addUIntegerElement(writer, KSCrashField_InstructionAddr, address);
+//    }
+//    writer->endContainer(writer);
 }
 
 /** Write a backtrace to the report.
@@ -1150,9 +1170,9 @@ void kscrw_i_writeBacktrace(const KSCrashReportWriter* const writer,
                             const int backtraceLength,
                             const int skippedEntries)
 {
-    writer->beginObject(writer, key);
+    writer->beginArray(writer, key);
     {
-        writer->beginArray(writer, KSCrashField_Contents);
+//        writer->beginArray(writer, KSCrashField_Contents);
         {
             if(backtraceLength > 0)
             {
@@ -1168,8 +1188,8 @@ void kscrw_i_writeBacktrace(const KSCrashReportWriter* const writer,
                 }
             }
         }
-        writer->endContainer(writer);
-        writer->addIntegerElement(writer, KSCrashField_Skipped, skippedEntries);
+//        writer->endContainer(writer);
+//        writer->addIntegerElement(writer, KSCrashField_Skipped, skippedEntries);
     }
     writer->endContainer(writer);
 }
@@ -1456,21 +1476,13 @@ void kscrw_i_writeThread(const KSCrashReportWriter* const writer,
 
     writer->beginObject(writer, key);
     {
-        if(backtrace != NULL)
-        {
-            kscrw_i_writeBacktrace(writer,
-                                   KSCrashField_Backtrace,
-                                   backtrace,
-                                   backtraceLength,
-                                   skippedEntries);
-        }
-        if(machineContext != NULL)
-        {
-            kscrw_i_writeRegisters(writer,
-                                   KSCrashField_Registers,
-                                   machineContext,
-                                   isCrashedThread);
-        }
+//        if(machineContext != NULL)
+//        {
+//            kscrw_i_writeRegisters(writer,
+//                                   KSCrashField_Registers,
+//                                   machineContext,
+//                                   isCrashedThread);
+//        }
         writer->addIntegerElement(writer, KSCrashField_Index, index);
         if(searchThreadNames)
         {
@@ -1479,30 +1491,38 @@ void kscrw_i_writeThread(const KSCrashReportWriter* const writer,
                 writer->addStringElement(writer, KSCrashField_Name, nameBuffer);
             }
         }
-        if (searchQueueNames) {
-            if(ksmach_getThreadQueueName(thread, nameBuffer, sizeof(nameBuffer)) && nameBuffer[0] != 0)
-            {
-                writer->addStringElement(writer,
-                                         KSCrashField_DispatchQueue,
-                                         nameBuffer);
-            }
-        }
+//        if (searchQueueNames) {
+//            if(ksmach_getThreadQueueName(thread, nameBuffer, sizeof(nameBuffer)) && nameBuffer[0] != 0)
+//            {
+//                writer->addStringElement(writer,
+//                                         KSCrashField_DispatchQueue,
+//                                         nameBuffer);
+//            }
+//        }
         writer->addBooleanElement(writer, KSCrashField_Crashed, isCrashedThread);
         writer->addBooleanElement(writer,
                                   KSCrashField_CurrentThread,
                                   thread == ksmach_thread_self());
-        if(isCrashedThread && machineContext != NULL)
+//        if(isCrashedThread && machineContext != NULL)
+//        {
+//            kscrw_i_writeStackContents(writer,
+//                                       KSCrashField_Stack,
+//                                       machineContext,
+//                                       skippedEntries > 0);
+//            if(writeNotableAddresses)
+//            {
+//                kscrw_i_writeNotableAddresses(writer,
+//                                              KSCrashField_NotableAddresses,
+//                                              machineContext);
+//            }
+//        }
+        if(backtrace != NULL)
         {
-            kscrw_i_writeStackContents(writer,
-                                       KSCrashField_Stack,
-                                       machineContext,
-                                       skippedEntries > 0);
-            if(writeNotableAddresses)
-            {
-                kscrw_i_writeNotableAddresses(writer,
-                                              KSCrashField_NotableAddresses,
-                                              machineContext);
-            }
+            kscrw_i_writeBacktrace(writer,
+                                   KSCrashField_Backtrace,
+                                   backtrace,
+                                   backtraceLength,
+                                   skippedEntries);
         }
     }
     writer->endContainer(writer);
@@ -2140,36 +2160,36 @@ void kscrashreport_writeStandardReport(KSCrash_Context* const crashContext,
 
     ksjson_beginEncode(getJsonContext(writer), true, kscrw_i_addJSONData, &fd);
 
-    writer->beginObject(writer, KSCrashField_Report);
-    {
-        kscrw_i_writeReportInfo(writer,
-                                KSCrashField_Report,
-                                KSCrashReportType_Standard,
-                                crashContext->config.crashID,
-                                crashContext->config.processName);
+//    writer->beginObject(writer, KSCrashField_Report);
+//    {
+//        kscrw_i_writeReportInfo(writer,
+//                                KSCrashField_Report,
+//                                KSCrashReportType_Standard,
+//                                crashContext->config.crashID,
+//                                crashContext->config.processName);
 
-        kscrw_i_writeBinaryImages(writer, KSCrashField_BinaryImages);
+//        kscrw_i_writeBinaryImages(writer, KSCrashField_BinaryImages);
 
-        kscrw_i_writeProcessState(writer, KSCrashField_ProcessState);
+//        kscrw_i_writeProcessState(writer, KSCrashField_ProcessState);
+//
+//        if(crashContext->config.systemInfoJSON != NULL)
+//        {
+//            kscrw_i_addJSONElement(writer, KSCrashField_System, crashContext->config.systemInfoJSON);
+//        }
+//
+//        writer->beginObject(writer, KSCrashField_SystemAtCrash);
+//        {
+//            kscrw_i_writeMemoryInfo(writer, KSCrashField_Memory);
+//            kscrw_i_writeAppStats(writer, KSCrashField_AppStats, &crashContext->state);
+//        }
+//        writer->endContainer(writer);
+//
+//        if(crashContext->config.userInfoJSON != NULL)
+//        {
+//            kscrw_i_addJSONElement(writer, KSCrashField_User, crashContext->config.userInfoJSON);
+//        }
 
-        if(crashContext->config.systemInfoJSON != NULL)
-        {
-            kscrw_i_addJSONElement(writer, KSCrashField_System, crashContext->config.systemInfoJSON);
-        }
-
-        writer->beginObject(writer, KSCrashField_SystemAtCrash);
-        {
-            kscrw_i_writeMemoryInfo(writer, KSCrashField_Memory);
-            kscrw_i_writeAppStats(writer, KSCrashField_AppStats, &crashContext->state);
-        }
-        writer->endContainer(writer);
-
-        if(crashContext->config.userInfoJSON != NULL)
-        {
-            kscrw_i_addJSONElement(writer, KSCrashField_User, crashContext->config.userInfoJSON);
-        }
-
-        writer->beginObject(writer, KSCrashField_Crash);
+//        writer->beginObject(writer, KSCrashField_Crash);
         {
             kscrw_i_writeAllThreads(writer,
                                     KSCrashField_Threads,
@@ -2179,8 +2199,8 @@ void kscrashreport_writeStandardReport(KSCrash_Context* const crashContext,
                                     crashContext->config.searchQueueNames);
             kscrw_i_writeError(writer, KSCrashField_Error, &crashContext->crash);
         }
-        writer->endContainer(writer);
-
+//        writer->endContainer(writer);
+//
         if(crashContext->config.onCrashNotify != NULL)
         {
             writer->beginObject(writer, KSCrashField_UserAtCrash);
@@ -2189,9 +2209,9 @@ void kscrashreport_writeStandardReport(KSCrash_Context* const crashContext,
             }
             writer->endContainer(writer);
         }
-    }
-    writer->endContainer(writer);
-    
+//    }
+//    writer->endContainer(writer);
+
     ksjson_endEncode(getJsonContext(writer));
     
     close(fd);

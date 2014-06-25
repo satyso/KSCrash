@@ -73,11 +73,11 @@ static CrashSentry g_sentries[] =
         kscrashsentry_installNSExceptionHandler,
         kscrashsentry_uninstallNSExceptionHandler,
     },
-    {
-        KSCrashTypeMainThreadDeadlock,
-        kscrashsentry_installDeadlockHandler,
-        kscrashsentry_uninstallDeadlockHandler,
-    },
+//    {
+//        KSCrashTypeMainThreadDeadlock,
+//        kscrashsentry_installDeadlockHandler,
+//        kscrashsentry_uninstallDeadlockHandler,
+//    },
     {
         KSCrashTypeUserReported,
         kscrashsentry_installUserExceptionHandler,

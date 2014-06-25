@@ -61,7 +61,7 @@
 #define KSCrashField_Contents              "contents"
 #define KSCrashField_Exception             "exception"
 #define KSCrashField_FirstObject           "first_object"
-#define KSCrashField_Index                 "index"
+#define KSCrashField_Index                 "thread index"
 #define KSCrashField_Ivars                 "ivars"
 #define KSCrashField_Name                  "name"
 #define KSCrashField_ReferencedObject      "referenced_object"

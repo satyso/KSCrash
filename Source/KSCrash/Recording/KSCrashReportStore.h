@@ -70,6 +70,8 @@
  */
 - (NSDictionary*) reportWithID:(NSString*) reportID;
 
+- (NSString*) reportIDFromFilename:(NSString*) filename;
+
 /** Get a list of all reports.
  *
  * @return A list of reports in chronological order (oldest first).

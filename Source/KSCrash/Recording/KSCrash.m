@@ -54,7 +54,7 @@
 
 /** The directory under "Caches" to store the crash reports. */
 #ifndef KSCRASH_ReportFilesDirectory
-    #define KSCRASH_ReportFilesDirectory @"KSCrashReports"
+    #define KSCRASH_ReportFilesDirectory @"APCrashReports"
 #endif
 
 
@@ -74,9 +74,6 @@
 
 @property(nonatomic,readwrite,retain) NSString* bundleName;
 @property(nonatomic,readwrite,retain) NSString* nextCrashID;
-@property(nonatomic,readonly,retain) NSString* crashReportPath;
-@property(nonatomic,readonly,retain) NSString* recrashReportPath;
-@property(nonatomic,readonly,retain) NSString* stateFilePath;
 
 // Mirrored from KSCrashAdvanced.h to provide ivars
 @property(nonatomic,readwrite,retain) id<KSCrashReportFilter> sink;
@@ -354,7 +351,7 @@ failed:
     [self.crashReportStore deleteAllReports];
 }
 
-- (void) reportUserException:(NSString*) name
+- (NSString*) reportUserException:(NSString*) name
                       reason:(NSString*) reason
                   lineOfCode:(NSString*) lineOfCode
                   stackTrace:(NSArray*) stackTrace
@@ -381,6 +378,7 @@ failed:
     // If kscrash_reportUserException() returns, we did not terminate.
     // Set up IDs and paths for the next crash.
 
+    NSString* currentID = self.nextCrashID;
     self.nextCrashID = [self generateUUIDString];
 
     kscrash_reinstall([self.crashReportPath UTF8String],
@@ -389,6 +387,7 @@ failed:
                       [self.nextCrashID UTF8String]);
 
     free((void*)cStackTrace);
+    return currentID;
 }
 
 // ============================================================================

@@ -149,7 +149,7 @@ KSCrashType kscrash_install(const char* const crashReportFilePath,
 
     KSCrashType crashTypes = kscrash_setHandlingCrashTypes(context->config.handlingCrashTypes);
 
-    context->config.systemInfoJSON = kssysteminfo_toJSON();
+//    context->config.systemInfoJSON = kssysteminfo_toJSON();
     context->config.processName = kssysteminfo_copyProcessName();
 
     KSLOG_DEBUG("Installation complete.");
