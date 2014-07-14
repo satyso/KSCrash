@@ -1553,17 +1553,25 @@ void kscrw_i_writeAllThreads(const KSCrashReportWriter* const writer,
         KSLOG_ERROR("task_threads: %s", mach_error_string(kr));
         return;
     }
-
-    // Fetch info for all threads.
-    writer->beginArray(writer, key);
+    
+    if (crash->crashType == KSCrashTypeUserReported)
     {
-        for(mach_msg_type_number_t i = 0; i < numThreads; i++)
-        {
-            kscrw_i_writeThread(writer, NULL, crash, threads[i], (int)i, writeNotableAddresses, searchThreadNames,
-                                searchQueueNames);
-        }
+        kscrw_i_writeThread(writer, NULL, crash, threads[0], 0, writeNotableAddresses, searchThreadNames,
+                            searchQueueNames);
     }
-    writer->endContainer(writer);
+    else
+    {
+        // Fetch info for all threads.
+        writer->beginArray(writer, key);
+        {
+            for(mach_msg_type_number_t i = 0; i < numThreads; i++)
+            {
+                kscrw_i_writeThread(writer, NULL, crash, threads[i], (int)i, writeNotableAddresses, searchThreadNames,
+                                    searchQueueNames);
+            }
+        }
+        writer->endContainer(writer);
+    }
 
     // Clean up.
     for(mach_msg_type_number_t i = 0; i < numThreads; i++)
@@ -1738,166 +1746,182 @@ void kscrw_i_writeError(const KSCrashReportWriter* const writer,
                         const char* const key,
                         const KSCrash_SentryContext* const crash)
 {
-    int machExceptionType = 0;
-    kern_return_t machCode = 0;
-    kern_return_t machSubCode = 0;
-    int sigNum = 0;
-    int sigCode = 0;
-    const char* exceptionName = NULL;
-    const char* crashReason = NULL;
-
-    // Gather common info.
-    switch(crash->crashType)
+    if (crash->crashType == KSCrashTypeUserReported)
     {
-        case KSCrashTypeMainThreadDeadlock:
-            break;
-        case KSCrashTypeMachException:
-            machExceptionType = crash->mach.type;
-            machCode = (kern_return_t)crash->mach.code;
-            if(machCode == KERN_PROTECTION_FAILURE && crash->isStackOverflow)
-            {
-                // A stack overflow should return KERN_INVALID_ADDRESS, but
-                // when a stack blasts through the guard pages at the top of the stack,
-                // it generates KERN_PROTECTION_FAILURE. Correct for this.
-                machCode = KERN_INVALID_ADDRESS;
-            }
-            machSubCode = (kern_return_t)crash->mach.subcode;
-
-            sigNum = kssignal_signalForMachException(machExceptionType,
-                                                     machCode);
-            break;
-        case KSCrashTypeCPPException:
-            machExceptionType = EXC_CRASH;
-            sigNum = SIGABRT;
-            crashReason = crash->crashReason;
-            exceptionName = crash->CPPException.name;
-            break;
-        case KSCrashTypeNSException:
-            machExceptionType = EXC_CRASH;
-            sigNum = SIGABRT;
-            exceptionName = crash->NSException.name;
-            crashReason = crash->crashReason;
-            break;
-        case KSCrashTypeSignal:
-            sigNum = crash->signal.signalInfo->si_signo;
-            sigCode = crash->signal.signalInfo->si_code;
-            machExceptionType = kssignal_machExceptionForSignal(sigNum);
-            break;
-        case KSCrashTypeUserReported:
-            machExceptionType = EXC_CRASH;
-            sigNum = SIGABRT;
-            crashReason = crash->crashReason;
-            break;
+        writer->beginObject(writer, KSCrashField_Reason);
+        if(crash->crashReason != NULL)
+        {
+            writer->addStringElement(writer, KSCrashField_Reason, crash->crashReason);
+        }
+        if(crash->userException.name != NULL)
+        {
+            writer->addStringElement(writer, KSCrashField_Name, crash->userException.name);
+        }
+        writer->endContainer(writer);
     }
-
-    const char* machExceptionName = ksmach_exceptionName(machExceptionType);
-    const char* machCodeName = machCode == 0 ? NULL : ksmach_kernelReturnCodeName(machCode);
-    const char* sigName = kssignal_signalName(sigNum);
-    const char* sigCodeName = kssignal_signalCodeName(sigNum, sigCode);
-
-    writer->beginObject(writer, key);
+    else
     {
-        writer->beginObject(writer, KSCrashField_Mach);
-        {
-            writer->addUIntegerElement(writer, KSCrashField_Exception, (unsigned)machExceptionType);
-            if(machExceptionName != NULL)
-            {
-                writer->addStringElement(writer, KSCrashField_ExceptionName, machExceptionName);
-            }
-            writer->addUIntegerElement(writer, KSCrashField_Code, (unsigned)machCode);
-            if(machCodeName != NULL)
-            {
-                writer->addStringElement(writer, KSCrashField_CodeName, machCodeName);
-            }
-            writer->addUIntegerElement(writer, KSCrashField_Subcode, (unsigned)machSubCode);
-        }
-        writer->endContainer(writer);
-
-        writer->beginObject(writer, KSCrashField_Signal);
-        {
-            writer->addUIntegerElement(writer, KSCrashField_Signal, (unsigned)sigNum);
-            if(sigName != NULL)
-            {
-                writer->addStringElement(writer, KSCrashField_Name, sigName);
-            }
-            writer->addUIntegerElement(writer, KSCrashField_Code, (unsigned)sigCode);
-            if(sigCodeName != NULL)
-            {
-                writer->addStringElement(writer, KSCrashField_CodeName, sigCodeName);
-            }
-        }
-        writer->endContainer(writer);
-
-        writer->addUIntegerElement(writer, KSCrashField_Address, crash->faultAddress);
-        if(crashReason != NULL)
-        {
-            writer->addStringElement(writer, KSCrashField_Reason, crashReason);
-        }
-
-        // Gather specific info.
+        int machExceptionType = 0;
+        kern_return_t machCode = 0;
+        kern_return_t machSubCode = 0;
+        int sigNum = 0;
+        int sigCode = 0;
+        const char* exceptionName = NULL;
+        const char* crashReason = NULL;
+        
+        // Gather common info.
         switch(crash->crashType)
         {
             case KSCrashTypeMainThreadDeadlock:
-                writer->addStringElement(writer, KSCrashField_Type, KSCrashExcType_Deadlock);
                 break;
-                
             case KSCrashTypeMachException:
-                writer->addStringElement(writer, KSCrashField_Type, KSCrashExcType_Mach);
+                machExceptionType = crash->mach.type;
+                machCode = (kern_return_t)crash->mach.code;
+                if(machCode == KERN_PROTECTION_FAILURE && crash->isStackOverflow)
+                {
+                    // A stack overflow should return KERN_INVALID_ADDRESS, but
+                    // when a stack blasts through the guard pages at the top of the stack,
+                    // it generates KERN_PROTECTION_FAILURE. Correct for this.
+                    machCode = KERN_INVALID_ADDRESS;
+                }
+                machSubCode = (kern_return_t)crash->mach.subcode;
+                
+                sigNum = kssignal_signalForMachException(machExceptionType,
+                                                         machCode);
                 break;
-
             case KSCrashTypeCPPException:
-            {
-                writer->addStringElement(writer, KSCrashField_Type, KSCrashExcType_CPPException);
-                writer->beginObject(writer, KSCrashField_CPPException);
-                {
-                    writer->addStringElement(writer, KSCrashField_Name, exceptionName);
-                }
-                writer->endContainer(writer);
+                machExceptionType = EXC_CRASH;
+                sigNum = SIGABRT;
+                crashReason = crash->crashReason;
+                exceptionName = crash->CPPException.name;
                 break;
-            }
             case KSCrashTypeNSException:
-            {
-                writer->addStringElement(writer, KSCrashField_Type, KSCrashExcType_NSException);
-                writer->beginObject(writer, KSCrashField_NSException);
-                {
-                    writer->addStringElement(writer, KSCrashField_Name, exceptionName);
-                    kscrw_i_writeAddressReferencedByString(writer, KSCrashField_ReferencedObject, crashReason);
-                }
-                writer->endContainer(writer);
+                machExceptionType = EXC_CRASH;
+                sigNum = SIGABRT;
+                exceptionName = crash->NSException.name;
+                crashReason = crash->crashReason;
                 break;
-            }
             case KSCrashTypeSignal:
-                writer->addStringElement(writer, KSCrashField_Type, KSCrashExcType_Signal);
+                sigNum = crash->signal.signalInfo->si_signo;
+                sigCode = crash->signal.signalInfo->si_code;
+                machExceptionType = kssignal_machExceptionForSignal(sigNum);
                 break;
-
             case KSCrashTypeUserReported:
-            {
-                writer->addStringElement(writer, KSCrashField_Type, KSCrashExcType_User);
-                writer->beginObject(writer, KSCrashField_UserReported);
-                {
-                    writer->addStringElement(writer, KSCrashField_Name, crash->userException.name);
-                    if(crash->userException.lineOfCode != NULL)
-                    {
-                        writer->addStringElement(writer, KSCrashField_LineOfCode, crash->userException.lineOfCode);
-                    }
-                    if(crash->userException.customStackTraceLength > 0)
-                    {
-                        writer->beginArray(writer, KSCrashField_Backtrace);
-                        {
-                            for(int i = 0; i < crash->userException.customStackTraceLength; i++)
-                            {
-                                writer->addStringElement(writer, NULL, crash->userException.customStackTrace[i]);
-                            }
-                        }
-                        writer->endContainer(writer);
-                    }
-                }
-                writer->endContainer(writer);
+                machExceptionType = EXC_CRASH;
+                sigNum = SIGABRT;
+                crashReason = crash->crashReason;
                 break;
+        }
+        
+        const char* machExceptionName = ksmach_exceptionName(machExceptionType);
+        const char* machCodeName = machCode == 0 ? NULL : ksmach_kernelReturnCodeName(machCode);
+        const char* sigName = kssignal_signalName(sigNum);
+        const char* sigCodeName = kssignal_signalCodeName(sigNum, sigCode);
+        
+        writer->beginObject(writer, key);
+        {
+            writer->beginObject(writer, KSCrashField_Mach);
+            {
+                writer->addUIntegerElement(writer, KSCrashField_Exception, (unsigned)machExceptionType);
+                if(machExceptionName != NULL)
+                {
+                    writer->addStringElement(writer, KSCrashField_ExceptionName, machExceptionName);
+                }
+                writer->addUIntegerElement(writer, KSCrashField_Code, (unsigned)machCode);
+                if(machCodeName != NULL)
+                {
+                    writer->addStringElement(writer, KSCrashField_CodeName, machCodeName);
+                }
+                writer->addUIntegerElement(writer, KSCrashField_Subcode, (unsigned)machSubCode);
+            }
+            writer->endContainer(writer);
+            
+            writer->beginObject(writer, KSCrashField_Signal);
+            {
+                writer->addUIntegerElement(writer, KSCrashField_Signal, (unsigned)sigNum);
+                if(sigName != NULL)
+                {
+                    writer->addStringElement(writer, KSCrashField_Name, sigName);
+                }
+                writer->addUIntegerElement(writer, KSCrashField_Code, (unsigned)sigCode);
+                if(sigCodeName != NULL)
+                {
+                    writer->addStringElement(writer, KSCrashField_CodeName, sigCodeName);
+                }
+            }
+            writer->endContainer(writer);
+            
+            writer->addUIntegerElement(writer, KSCrashField_Address, crash->faultAddress);
+            if(crashReason != NULL)
+            {
+                writer->addStringElement(writer, KSCrashField_Reason, crashReason);
+            }
+            
+            // Gather specific info.
+            switch(crash->crashType)
+            {
+                case KSCrashTypeMainThreadDeadlock:
+                    writer->addStringElement(writer, KSCrashField_Type, KSCrashExcType_Deadlock);
+                    break;
+                    
+                case KSCrashTypeMachException:
+                    writer->addStringElement(writer, KSCrashField_Type, KSCrashExcType_Mach);
+                    break;
+                    
+                case KSCrashTypeCPPException:
+                {
+                    writer->addStringElement(writer, KSCrashField_Type, KSCrashExcType_CPPException);
+                    writer->beginObject(writer, KSCrashField_CPPException);
+                    {
+                        writer->addStringElement(writer, KSCrashField_Name, exceptionName);
+                    }
+                    writer->endContainer(writer);
+                    break;
+                }
+                case KSCrashTypeNSException:
+                {
+                    writer->addStringElement(writer, KSCrashField_Type, KSCrashExcType_NSException);
+                    writer->beginObject(writer, KSCrashField_NSException);
+                    {
+                        writer->addStringElement(writer, KSCrashField_Name, exceptionName);
+                        kscrw_i_writeAddressReferencedByString(writer, KSCrashField_ReferencedObject, crashReason);
+                    }
+                    writer->endContainer(writer);
+                    break;
+                }
+                case KSCrashTypeSignal:
+                    writer->addStringElement(writer, KSCrashField_Type, KSCrashExcType_Signal);
+                    break;
+                    
+                case KSCrashTypeUserReported:
+                {
+                    writer->addStringElement(writer, KSCrashField_Type, KSCrashExcType_User);
+                    writer->beginObject(writer, KSCrashField_UserReported);
+                    {
+                        writer->addStringElement(writer, KSCrashField_Name, crash->userException.name);
+                        if(crash->userException.lineOfCode != NULL)
+                        {
+                            writer->addStringElement(writer, KSCrashField_LineOfCode, crash->userException.lineOfCode);
+                        }
+                        if(crash->userException.customStackTraceLength > 0)
+                        {
+                            writer->beginArray(writer, KSCrashField_Backtrace);
+                            {
+                                for(int i = 0; i < crash->userException.customStackTraceLength; i++)
+                                {
+                                    writer->addStringElement(writer, NULL, crash->userException.customStackTrace[i]);
+                                }
+                            }
+                            writer->endContainer(writer);
+                        }
+                    }
+                    writer->endContainer(writer);
+                    break;
+                }
             }
         }
+        writer->endContainer(writer);
     }
-    writer->endContainer(writer);
 }
 
 /** Write information about app runtime, etc to the report.
@@ -2203,11 +2227,11 @@ void kscrashreport_writeStandardReport(KSCrash_Context* const crashContext,
 //
         if(crashContext->config.onCrashNotify != NULL)
         {
-            writer->beginObject(writer, KSCrashField_UserAtCrash);
-            {
+//            writer->beginObject(writer, KSCrashField_UserAtCrash);
+//            {
                 kscrw_i_callUserCrashHandler(crashContext, writer);
-            }
-            writer->endContainer(writer);
+//            }
+//            writer->endContainer(writer);
         }
 //    }
 //    writer->endContainer(writer);
